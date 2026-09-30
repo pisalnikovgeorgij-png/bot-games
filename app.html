@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stars Casino</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body {
+            background: var(--tg-theme-bg-color, #1a1a1a);
+            color: var(--tg-theme-text-color, #fff);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #555);
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .balance {
+            font-size: 22px;
+            color: var(--tg-theme-button-color, #5eaaef);
+            font-weight: bold;
+        }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: var(--tg-theme-secondary-bg-color, #2a2a2a);
+            border: none;
+            border-radius: 12px;
+            color: var(--tg-theme-text-color, #fff);
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tab.active {
+            background: var(--tg-theme-button-color, #5eaaef);
+        }
+        .cases-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .case-card {
+            background: var(--tg-theme-secondary-bg-color, #2a2a2a);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .case-card:active { transform: scale(0.96); }
+        .case-emoji { font-size: 50px; margin-bottom: 8px; }
+        .case-name { font-weight: bold; margin-bottom: 4px; }
+        .case-price { color: var(--tg-theme-button-color, #5eaaef); font-size: 14px; }
+
+        .inv-item {
+            background: var(--tg-theme-secondary-bg-color, #2a2a2a);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .inv-emoji { font-size: 36px; }
+        .inv-info { flex: 1; }
+        .inv-name { font-weight: bold; }
+        .inv-rarity { font-size: 12px; opacity: 0.7; }
+        .inv-sell {
+            background: var(--tg-theme-button-color, #5eaaef);
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .hidden { display: none; }
+        .empty { text-align: center; padding: 40px; opacity: 0.6; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🎰 Stars Casino</h1>
+    <div class="balance">💰 <span id="balance">0</span>⭐</div>
+</div>
+
+<div class="tabs">
+    <button class="tab active" data-tab="cases">🎁 Кейсы</button>
+    <button class="tab" data-tab="inv">🎒 Инвентарь</button>
+</div>
+
+<!-- ВКЛАДКА КЕЙСОВ -->
+<div id="tab-cases" class="tab-content">
+    <div class="cases-grid">
+        <div class="case-card" data-case="basic">
+            <div class="case-emoji">🟢</div>
+            <div class="case-name">Базовый</div>
+            <div class="case-price">50⭐</div>
+        </div>
+        <div class="case-card" data-case="rare">
+            <div class="case-emoji">🔵</div>
+            <div class="case-name">Редкий</div>
+            <div class="case-price">200⭐</div>
+        </div>
+        <div class="case-card" data-case="epic">
+            <div class="case-emoji">🟣</div>
+            <div class="case-name">Эпический</div>
+            <div class="case-price">500⭐</div>
+        </div>
+        <div class="case-card" data-case="legendary">
+            <div class="case-emoji">🟡</div>
+            <div class="case-name">Легендарный</div>
+            <div class="case-price">1500⭐</div>
+        </div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА ИНВЕНТАРЯ -->
+<div id="tab-inv" class="tab-content hidden">
+    <div id="inv-list"></div>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();  // разворачиваем на весь экран
+
+    // --- Переключение вкладок ---
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            tab.classList.add('active');
+            document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+        });
+    });
+
+    // --- Открытие кейсов (отправляем команду боту) ---
+    document.querySelectorAll('.case-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const caseKey = card.dataset.case;
+            // Отправляем данные боту — он обработает и ответит в чате
+            tg.sendData(JSON.stringify({ action: 'open_case', case: caseKey }));
+            tg.close();  // закрываем приложение, чтобы увидеть ответ бота
+        });
+    });
+
+    // --- Получаем данные от бота (если бот их присылает) ---
+    tg.onEvent('message', (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.balance !== undefined) {
+                document.getElementById('balance').textContent = data.balance;
+            }
+            if (data.inventory) {
+                renderInventory(data.inventory);
+            }
+        } catch(e) {}
+    });
+
+    function renderInventory(items) {
+        const list = document.getElementById('inv-list');
+        if (!items.length) {
+            list.innerHTML = '<div class="empty">🎒 Инвентарь пуст<br>Открой кейсы!</div>';
+            return;
+        }
+        list.innerHTML = items.map(it => `
+            <div class="inv-item">
+                <div class="inv-emoji">${it.emoji}</div>
+                <div class="inv-info">
+                    <div class="inv-name">${it.name}</div>
+                    <div class="inv-rarity">${it.rarity}</div>
+                </div>
+                <button class="inv-sell" data-id="${it.id}" data-gift="${it.gift_id}">
+                    💰 ${it.sell_price}⭐
+                </button>
+            </div>
+        `).join('');
+
+        // Кнопки продажи
+        list.querySelectorAll('.inv-sell').forEach(btn => {
+            btn.addEventListener('click', () => {
+                tg.sendData(JSON.stringify({
+                    action: 'sell',
+                    id: btn.dataset.id,
+                    gift: btn.dataset.gift
+                }));
+                tg.close();
+            });
+        });
+    }
+
+    // Запрашиваем данные при открытии
+    tg.sendData(JSON.stringify({ action: 'get_data' }));
+</script>
+
+</body>
+</html>
